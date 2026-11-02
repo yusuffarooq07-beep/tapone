@@ -117,10 +117,18 @@ function slug(s){return s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-
 function initials(s){return s.split(/\s+/).map(x=>x[0]).join("").slice(0,2).toUpperCase();}
 function assetPath(person){return `assets/people/${slug(person)}`;}
 function photoMarkup(person, extraClass=""){
- const base=assetPath(person);
- // Accept normal image extensions and accidental double extensions from uploads.
- const candidates=[".jpg",".jpeg",".png",".jpg.jpeg",".jpeg.jpg",".png.jpeg",".jpeg.png",".jpg.png",".png.jpg"];
- return `<img class="${extraClass}" src="${base}${candidates[0]}" data-candidates='${JSON.stringify(candidates)}' data-fallback="0" alt="" onerror="const c=JSON.parse(this.dataset.candidates);const n=Number(this.dataset.fallback)+1;if(n<c.length){this.dataset.fallback=String(n);this.src='${base}'+c[n];}else{this.replaceWith(Object.assign(document.createElement('div'),{className:'photo-placeholder',textContent:'📷'}))}">`;
+ // Photos may have been uploaded directly into assets/ or into assets/people/.
+ // Try common extensions, including accidental double extensions from Windows.
+ const base=slug(person);
+ const extensions=[".jpg",".jpeg",".png",".jpg.jpeg",".jpeg.jpg",".png.jpeg",".jpeg.png",".jpg.png",".png.jpg",".jpg.jpg",".jpeg.jpeg",".png.png"];
+ const candidates=[...extensions.map(ext=>`assets/people/${base}${ext}`),...extensions.map(ext=>`assets/${base}${ext}`)];
+ return `<img class="${extraClass}" src="${candidates[0]}" data-candidates='${JSON.stringify(candidates)}' data-fallback="0" alt="" onerror="photoFallback(this)">`;
+}
+function photoFallback(img){
+ const candidates=JSON.parse(img.dataset.candidates||"[]");
+ const next=Number(img.dataset.fallback||0)+1;
+ if(next<candidates.length){img.dataset.fallback=String(next);img.src=candidates[next];}
+ else{const placeholder=document.createElement("div");placeholder.className="photo-placeholder";placeholder.textContent="📷";img.replaceWith(placeholder);}
 }
 function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}catch(e){}}
 function load(){try{const v=JSON.parse(localStorage.getItem(STORAGE_KEY));if(v&&v.locked&&v.current)state={...state,...v,spinning:false,canPick:false};}catch(e){}}
@@ -161,9 +169,8 @@ function renderFinal(){
  const score=Object.values(state.locked).reduce((s,v)=>s+v.points,0);
  document.getElementById("finalScore").textContent=score;
  document.getElementById("finalSummary").textContent=`You earned ${score} out of 1,000 possible points.`;
- document.getElementById("resultsList").innerHTML=DATA.map((d,i)=>{
-  const v=state.locked[i];return `<div class="result-row"><span class="result-person">${photoMarkup(v.name)}<strong>${escapeHtml(d.name)}</strong></span><span>${v.points} pts</span></div>`;
- }).join("");
+ // Keep the individual picks and category-by-category points private.
+ document.getElementById("resultsList").innerHTML="";
 }
 function startSpin(){
  if(state.spinning||state.canPick||Object.keys(state.locked).length===10)return;
