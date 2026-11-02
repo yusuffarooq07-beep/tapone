@@ -115,8 +115,11 @@ let tickers = [];
 function pointsFor(index){ return 100 - index*10; }
 function slug(s){return s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");}
 function initials(s){return s.split(/\s+/).map(x=>x[0]).join("").slice(0,2).toUpperCase();}
-function assetPath(cat,person){return `assets/people/${slug(person)}.jpg`; }
-function photoMarkup(person, extraClass=""){const src=assetPath("",person);return `<img class="${extraClass}" src="${src}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'photo-placeholder',textContent:'📷'}))">`; }
+function assetPath(person){return `assets/people/${slug(person)}`;}
+function photoMarkup(person, extraClass=""){
+ const base=assetPath(person);
+ return `<img class="${extraClass}" src="${base}.jpg" data-fallback="0" alt="" onerror="if(this.dataset.fallback==='0'){this.dataset.fallback='1';this.src='${base}.jpeg';}else if(this.dataset.fallback==='1'){this.dataset.fallback='2';this.src='${base}.png';}else{this.replaceWith(Object.assign(document.createElement('div'),{className:'photo-placeholder',textContent:'📷'}))}">`;
+}
 function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}catch(e){}}
 function load(){try{const v=JSON.parse(localStorage.getItem(STORAGE_KEY));if(v&&v.locked&&v.current)state={...state,...v,spinning:false,canPick:false};}catch(e){}}
 function cardMarkup(cat,i){
