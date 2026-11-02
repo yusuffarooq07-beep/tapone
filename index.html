@@ -30,8 +30,9 @@ h1{font-size:clamp(2rem,5vw,3.5rem);line-height:1.02;margin:10px 0 8px;letter-sp
 .cat{font-size:.7rem;font-weight:850;letter-spacing:.09em;color:#c9b6ff;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:1px 0 10px}
 .portrait{width:100%;aspect-ratio:1.18/1;border-radius:12px;background:linear-gradient(145deg,#34304a,#222234);display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid #ffffff12;position:relative}
 .portrait img{width:100%;height:100%;object-fit:cover;display:block}
-.initials{font-size:clamp(1.35rem,3vw,2.5rem);font-weight:900;color:#eee7ff;text-shadow:0 2px 14px #0008}
-.person{font-size:.92rem;font-weight:750;text-align:center;overflow-wrap:anywhere;margin:9px 0 3px;min-height:2.35em;display:flex;align-items:center;justify-content:center}
+.photo-placeholder{font-size:2rem;opacity:.55;display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:linear-gradient(145deg,#34304a,#222234)}
+.person{display:none}
+.rankline{display:none}
 .rankline{text-align:center;color:var(--muted);font-size:.73rem}
 .points{color:var(--gold);font-weight:850}
 .status{font-size:.73rem;text-align:center;margin-top:8px;color:var(--muted);min-height:1em}
@@ -48,7 +49,10 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none}
 .score small{font-size:1.1rem;color:var(--muted);letter-spacing:0}
 .result h2{margin:0 0 8px}
 .results-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:18px;text-align:left}
-.result-row{display:flex;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:10px;background:#222131;font-size:.85rem}
+.result-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:10px;background:#222131;font-size:.85rem}
+.result-person{display:flex;align-items:center;gap:10px;min-width:0}
+.result-person img{width:48px;height:48px;object-fit:cover;border-radius:9px}
+.result-person .photo-placeholder{width:48px;height:48px;border-radius:9px;font-size:1.2rem}
 .result-row span:last-child{color:var(--gold);font-weight:850;white-space:nowrap}
 .note{max-width:800px;margin:22px auto 0;text-align:center;color:#858398;font-size:.76rem;line-height:1.5}
 @keyframes glow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.65)}}
@@ -67,7 +71,7 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none}
 
 <div class="topbar">
   <div class="progress-wrap">
-    <div class="progress-label"><span id="progressText">0 / 10 categories locked</span><span id="scoreLive">0 points</span></div>
+    <div class="progress-label"><span id="progressText">0 / 10 categories locked</span></div>
     <div class="progress"><span id="progressBar"></span></div>
   </div>
   <div class="pill" id="roundPill">Round 1 of 10</div>
@@ -88,7 +92,7 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none}
     <div class="controls"><button class="primary" id="playAgainBtn">PLAY AGAIN</button></div>
   </section>
 </main>
-<p class="note">Each category has its own nine-option pool. Your picks are saved in this browser. A locked category never spins again. Scores use the rankings supplied for this game: 1st = 100 points, down to 9th = 20 points.</p>
+<p class="note">Each category has its own nine-option pool. Your picks are saved in this browser. A locked category never spins again.</p>
 </div>
 <script>
 const DATA = [
@@ -111,20 +115,18 @@ let tickers = [];
 function pointsFor(index){ return 100 - index*10; }
 function slug(s){return s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");}
 function initials(s){return s.split(/\s+/).map(x=>x[0]).join("").slice(0,2).toUpperCase();}
-function assetPath(cat,person){return `assets/${slug(cat)}/${slug(person)}.jpg`;}
+function assetPath(cat,person){return `assets/people/${slug(person)}.jpg`; }
+function photoMarkup(person, extraClass=""){const src=assetPath("",person);return `<img class="${extraClass}" src="${src}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'photo-placeholder',textContent:'📷'}))">`; }
 function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}catch(e){}}
 function load(){try{const v=JSON.parse(localStorage.getItem(STORAGE_KEY));if(v&&v.locked&&v.current)state={...state,...v,spinning:false,canPick:false};}catch(e){}}
 function cardMarkup(cat,i){
  const item=DATA[i], locked=!!state.locked[i], chosen=state.current[i];
- const name=chosen||"Ready to roll";
- const rank=chosen?item.options.indexOf(chosen):-1;
- const points=rank>=0?pointsFor(rank):null;
- const photo=chosen?`<img src="${assetPath(item.name,chosen)}" alt="${escapeHtml(chosen)}" onerror="this.remove();this.parentElement.querySelector('.initials').style.display='flex'">`:"";
+ const photo=chosen?photoMarkup(chosen):'<div class="photo-placeholder">?</div>';
  return `<article class="card ${locked?"locked":""}" data-index="${i}" tabindex="0" role="button" aria-label="${escapeHtml(item.name)} category${locked?", locked":""}">
   <div class="cat">${escapeHtml(item.name)}</div>
-  <div class="portrait">${photo}<span class="initials">${chosen?initials(chosen):"?"}</span></div>
-  <div class="person">${escapeHtml(name)}</div>
-  <div class="rankline">${chosen?`Rank #${rank+1} · <span class="points">${points} pts</span>`:"9 possible options"}</div>
+  <div class="portrait">${photo}</div>
+  <div class="person"></div>
+  <div class="rankline"></div>
   <div class="status">${locked?"✓ Locked":(state.canPick?"Tap to lock this result":(state.spinning?"Spinning…":"Waiting"))}</div>
  </article>`;
 }
@@ -141,7 +143,6 @@ function render(){
  const count=Object.keys(state.locked).length;
  const score=Object.values(state.locked).reduce((sum,v)=>sum+v.points,0);
  document.getElementById("progressText").textContent=`${count} / 10 categories locked`;
- document.getElementById("scoreLive").textContent=`${score} points`;
  document.getElementById("progressBar").style.width=`${count*10}%`;
  document.getElementById("roundPill").textContent=count===10?"Complete":`Round ${count+1} of 10`;
  const btn=document.getElementById("spinBtn");
@@ -156,7 +157,7 @@ function renderFinal(){
  document.getElementById("finalScore").textContent=score;
  document.getElementById("finalSummary").textContent=`You earned ${score} out of 1,000 possible points.`;
  document.getElementById("resultsList").innerHTML=DATA.map((d,i)=>{
-  const v=state.locked[i];return `<div class="result-row"><span>${escapeHtml(d.name)}: ${escapeHtml(v.name)}</span><span>${v.points} pts</span></div>`;
+  const v=state.locked[i];return `<div class="result-row"><span class="result-person">${photoMarkup(v.name)}<strong>${escapeHtml(d.name)}</strong></span><span>${v.points} pts</span></div>`;
  }).join("");
 }
 function startSpin(){
@@ -181,9 +182,7 @@ function startSpin(){
   state.current[i]=opts[Math.floor(Math.random()*opts.length)];
   const card=document.querySelector(`.card[data-index="${i}"]`);
   if(card){
-   const p=card.querySelector(".person");if(p)p.textContent=state.current[i];
-   const ini=card.querySelector(".initials");if(ini){ini.textContent=initials(state.current[i]);ini.style.display="";}
-   const img=card.querySelector("img");if(img)img.remove();
+   const portrait=card.querySelector(".portrait");if(portrait)portrait.innerHTML=photoMarkup(state.current[i]);
    card.querySelector(".rankline").textContent="Spinning…";
   }
  },95));
@@ -204,7 +203,8 @@ function pick(i){
  state.locked[i]={name,rank,points:pointsFor(rank)};
  state.canPick=false;save();render();
  const count=Object.keys(state.locked).length;
- document.getElementById("hint").textContent=count===10?"All categories locked! Your final score is ready.":"Selection locked. Press SPIN ALL to spin the remaining categories.";
+ document.getElementById("hint").textContent=count===10?"All categories locked! Your final score is ready.":"Locked in! Spinning the remaining categories…";
+ if(count<10)setTimeout(startSpin,450);
 }
 function reset(){
  if(state.spinning)return;
