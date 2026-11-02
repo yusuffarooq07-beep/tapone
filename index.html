@@ -122,7 +122,7 @@ function photoMarkup(person, extraClass=""){
  const base=slug(person);
  const extensions=[".jpg",".jpeg",".png",".jpg.jpeg",".jpeg.jpg",".png.jpeg",".jpeg.png",".jpg.png",".png.jpg",".jpg.jpg",".jpeg.jpeg",".png.png"];
  const candidates=[...extensions.map(ext=>`assets/people/${base}${ext}`),...extensions.map(ext=>`assets/${base}${ext}`)];
- return `<img class="${extraClass}" src="${candidates[0]}" data-candidates='${JSON.stringify(candidates)}' data-fallback="0" alt="" onerror="photoFallback(this)">`;
+ return `<img class="${extraClass}" loading="lazy" decoding="async" fetchpriority="low" src="${candidates[0]}" data-candidates='${JSON.stringify(candidates)}' data-fallback="0" alt="" onerror="photoFallback(this)">`;
 }
 function photoFallback(img){
  const candidates=JSON.parse(img.dataset.candidates||"[]");
@@ -192,9 +192,12 @@ function startSpin(){
   if(!state.spinning)return;
   const opts=DATA[i].options;
   state.current[i]=opts[Math.floor(Math.random()*opts.length)];
+  // Avoid loading a different photo on every animation tick. The selected
+  // person's photo is loaded once after the spin finishes and render() runs.
   const card=document.querySelector(`.card[data-index="${i}"]`);
   if(card){
-   const portrait=card.querySelector(".portrait");if(portrait)portrait.innerHTML=photoMarkup(state.current[i]);
+   const portrait=card.querySelector(".portrait");
+   if(portrait && !portrait.querySelector(".photo-placeholder")) portrait.innerHTML='<div class="photo-placeholder">?</div>';
    card.querySelector(".rankline").textContent="Spinning…";
   }
  },95));
